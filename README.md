@@ -1,85 +1,103 @@
 # RecipeBook
 
-A web application for discovering, creating, and sharing recipes.
+A modern web application for discovering, creating, and sharing delicious recipes.
 
 ## Features
 
-- User authentication with Firebase
-- Create and share recipes
-- Save favorite recipes
-- Search for recipes
-- Responsive design with TailwindCSS and shadcn/ui
-- Animations with Framer Motion
-- Legal pages (Privacy Policy, Terms of Service, Cookie Policy)
-- Contact form with email functionality
+- **User Authentication**: Secure login and registration with Firebase Authentication
+- **Recipe Management**: Create, view, edit, and delete your own recipes
+- **Recipe Sharing**: Share your culinary creations with the community
+- **Favorites**: Save recipes you love for quick access
+- **Search Functionality**: Find recipes by name, description, or tags
+- **Responsive Design**: Beautiful UI with TailwindCSS and shadcn/ui components
+- **Smooth Animations**: Enhanced user experience with Framer Motion
+- **Legal Pages**: Comprehensive Privacy Policy, Terms of Service, and Cookie Policy
 
 ## Technology Stack
 
-- **Frontend**: React, TailwindCSS, shadcn/ui, Framer Motion
+- **Frontend Framework**: React 19 with Vite
+- **Styling**: TailwindCSS 4 with shadcn/ui components
+- **Animations**: Framer Motion
 - **Authentication**: Firebase Authentication
 - **Database & Storage**: Supabase
-- **Backend Functions**: Firebase Cloud Functions
+- **State Management**: React's built-in hooks
+- **Routing**: React Router v6
+- **Form Handling**: Custom form implementation
 
 ## Pages Structure
 
 ### Main Pages
-- `/` - Home page with recipe listings
-- `/recipes/:id` - Recipe details page
-- `/create` - Create new recipe page
-- `/my-recipes` - User's recipes page
-- `/auth/login` - Login page
-- `/auth/register` - Registration page
+- `/` - Home page with featured recipes and search functionality
+- `/recipes/:id` - Detailed view of a specific recipe
+- `/create` - Form to create new recipes (authenticated users only)
+- `/my-recipes` - Dashboard for managing your recipes (authenticated users only)
+- `/auth/login` - User login page
+- `/auth/register` - New user registration page
 
 ### Legal and Contact Pages
 - `/privacy-policy` - Privacy Policy page
 - `/terms-of-service` - Terms of Service page
 - `/cookie-policy` - Cookie Policy page
-- `/contact` - Contact Us page
 
-## Contact Form Email Functionality
+## Environment Setup
 
-The Contact Us page includes a form that sends emails to the site owner when submitted. This functionality is implemented using Firebase Cloud Functions.
+This project requires the following environment variables:
 
-### Setting Up the Contact Form Email Function
+### Firebase Configuration
+```
+VITE_FIREBASE_API_KEY=your_api_key
+VITE_FIREBASE_AUTH_DOMAIN=your_auth_domain
+VITE_FIREBASE_PROJECT_ID=your_project_id
+VITE_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+VITE_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+VITE_FIREBASE_APP_ID=your_app_id
+VITE_FIREBASE_MEASUREMENT_ID=your_measurement_id
+```
 
-1. Navigate to the `functions` directory
-2. Follow the instructions in the `functions/README.md` file to set up the Firebase Cloud Functions
-3. Make sure to set the environment variables for the email service as described in the README
+### Supabase Configuration
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_SERVICE_KEY=your_supabase_service_key
+```
 
 ## Development
 
 To run the application locally:
 
-1. Install dependencies:
+1. Clone the repository:
    ```
-   cd frontend
+   git clone https://github.com/lakshyakumar90/Recipee.git
+   cd Recipee
+   ```
+
+2. Install dependencies:
+   ```
    npm install
    ```
 
-2. Start the development server:
+3. Create a `.env` file in the root directory with the required environment variables
+
+4. Start the development server:
    ```
    npm run dev
    ```
 
-3. To test the contact form email functionality, you'll need to set up and run the Firebase emulators:
-   ```
-   cd functions
-   npm install
-   firebase emulators:start
-   ```
+5. Open your browser and navigate to `http://localhost:5173`
 
-## Deployment
+## Building for Production
 
-To deploy the application:
+To build the application for production:
 
-1. Deploy the frontend:
-   ```
-   cd frontend
-   npm run build
-   ```
+```
+npm run build
+```
 
-2. Deploy the Firebase functions:
-   ```
-   cd functions
-   firebase deploy --only functions
-   ```
+The built files will be in the `dist` directory, ready to be deployed to your hosting provider of choice.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
