@@ -1,19 +1,21 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Plus, BookmarkCheck, ChefHat, Search } from 'lucide-react';
+import { Clock, Plus, BookmarkCheck, ChefHat, Search, Edit, Trash2, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
 const MyRecipes = () => {
+  const navigate = useNavigate();
   const [recipes, setRecipes] = useState([]);
   const [savedRecipes, setSavedRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredRecipes, setFilteredRecipes] = useState([]);
+  const [showDropdown, setShowDropdown] = useState(null);
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -30,7 +32,7 @@ const MyRecipes = () => {
           userUuid = uuidv4();
           userMappings[user.uid] = userUuid;
           localStorage.setItem('userMappings', JSON.stringify(userMappings));
-          
+
           // Since this is a new mapping, the user won't have any recipes yet
           setLoading(false);
           return;
@@ -71,7 +73,7 @@ const MyRecipes = () => {
           // Parse JSON strings if needed
           let ingredients = recipe.ingredients;
           let instructions = recipe.instructions;
-          
+
           // Check if ingredients and instructions are strings that need parsing
           if (typeof ingredients === 'string') {
             try {
@@ -80,7 +82,7 @@ const MyRecipes = () => {
               console.error('Error parsing ingredients:', e);
             }
           }
-          
+
           if (typeof instructions === 'string') {
             try {
               instructions = JSON.parse(instructions);
@@ -102,6 +104,7 @@ const MyRecipes = () => {
             userId: recipe.user_id,
             createdAt: recipe.created_at,
             imageUrl: imageUrl || 'https://via.placeholder.com/300x200?text=No+Image',
+            imagePath: recipe.image_path,
           });
         }
 
@@ -188,6 +191,51 @@ const MyRecipes = () => {
       setFilteredRecipes(filtered);
     }
   }, [searchQuery, activeTab, recipes, savedRecipes]);
+
+  // Handle recipe deletion
+  const handleDeleteRecipe = async (recipeId, imagePath) => {
+    if (!window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      // Delete recipe from Supabase
+      const { error } = await supabase
+        .from('recipes')
+        .delete()
+        .eq('id', recipeId);
+
+      if (error) throw error;
+
+      // Delete image from storage if it exists
+      if (imagePath) {
+        await supabase
+          .storage
+          .from('recipe-images')
+          .remove([imagePath]);
+      }
+
+      // Update local state
+      setRecipes(prev => prev.filter(recipe => recipe.id !== recipeId));
+      setShowDropdown(null);
+    } catch (err) {
+      console.error('Error deleting recipe:', err);
+      alert('Failed to delete recipe. Please try again.');
+    }
+  };
+
+  // Handle edit recipe
+  const handleEditRecipe = (recipeId) => {
+    navigate(`/edit/${recipeId}`);
+    setShowDropdown(null);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = () => setShowDropdown(null);
+    document.addEventListener('click', handleClickOutside);
+    return () => document.removeEventListener('click', handleClickOutside);
+  }, []);
 
   // Animation variants for staggered list
   const container = {
@@ -319,8 +367,53 @@ const MyRecipes = () => {
         >
           {filteredRecipes.map((recipe) => (
             <motion.div key={recipe.id} variants={item}>
-              <Link to={`/recipes/${recipe.id}`} className="block group">
-                <div className="bg-card border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md">
+              <div className="bg-card border rounded-lg overflow-hidden transition-all duration-300 hover:shadow-md relative">
+                {/* Edit/Delete Menu for My Recipes */}
+                {activeTab === 'my' && (
+                  <div className="absolute top-2 right-2 z-10">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0 bg-background/80 backdrop-blur-sm hover:bg-background"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowDropdown(showDropdown === recipe.id ? null : recipe.id);
+                      }}
+                    >
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+
+                    {showDropdown === recipe.id && (
+                      <div className="absolute right-0 top-full mt-1 bg-background border rounded-lg shadow-lg py-1 min-w-[120px]">
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleEditRecipe(recipe.id);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted flex items-center gap-2"
+                        >
+                          <Edit className="h-4 w-4" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleDeleteRecipe(recipe.id, recipe.imagePath);
+                          }}
+                          className="w-full px-3 py-2 text-left text-sm hover:bg-muted text-destructive flex items-center gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <Link to={`/recipes/${recipe.id}`} className="block group">
                   <div className="aspect-video relative overflow-hidden">
                     <img
                       src={recipe.imageUrl}
@@ -340,8 +433,8 @@ const MyRecipes = () => {
                       <span>{recipe.cookTime || '30 mins'}</span>
                     </div>
                   </div>
-                </div>
-              </Link>
+                </Link>
+              </div>
             </motion.div>
           ))}
         </motion.div>
@@ -351,7 +444,3 @@ const MyRecipes = () => {
 };
 
 export default MyRecipes;
-
-
-
-

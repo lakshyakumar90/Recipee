@@ -6,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import { formatDate } from '@/lib/utils';
+import RecipeScaling from '@/components/RecipeScaling';
+import Reviews from '@/components/Reviews';
+import Collections from '@/components/Collections';
+import Nutrition from '@/components/Nutrition';
+import { debugRecipe } from '@/utils/recipeDebug';
 
 const RecipeDetails = () => {
   const { id } = useParams();
@@ -15,6 +20,10 @@ const RecipeDetails = () => {
   const [error, setError] = useState(null);
   const [isSaved, setIsSaved] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
+  const [averageRating, setAverageRating] = useState(0);
+  const [totalReviews, setTotalReviews] = useState(0);
+  const [scaledServings, setScaledServings] = useState(null);
+  const [scaledIngredients, setScaledIngredients] = useState([]);
 
   useEffect(() => {
     // Get current user
@@ -28,6 +37,13 @@ const RecipeDetails = () => {
   useEffect(() => {
     const fetchRecipe = async () => {
       try {
+        console.log('Fetching recipe with ID:', id);
+
+        // Run debug tool in development
+        if (process.env.NODE_ENV === 'development') {
+          await debugRecipe(id);
+        }
+
         // Fetch recipe from Supabase
         const { data: recipeData, error } = await supabase
           .from('recipes')
@@ -35,7 +51,19 @@ const RecipeDetails = () => {
           .eq('id', id)
           .single();
 
+        console.log('Recipe fetch result:', { data: recipeData, error });
+
         if (error) {
+          console.error('Supabase error:', error);
+          if (error.code === 'PGRST116') {
+            setError('Recipe not found');
+          } else {
+            setError(`Database error: ${error.message}`);
+          }
+          return;
+        }
+
+        if (!recipeData) {
           setError('Recipe not found');
           return;
         }
@@ -61,20 +89,63 @@ const RecipeDetails = () => {
         console.log('Image path:', recipeData.image_path);
         console.log('Generated image URL:', imageUrl);
 
-        setRecipe({
+        // Parse ingredients and instructions safely
+        let ingredients = [];
+        let instructions = [];
+
+        try {
+          ingredients = typeof recipeData.ingredients === 'string'
+            ? JSON.parse(recipeData.ingredients)
+            : recipeData.ingredients || [];
+        } catch (err) {
+          console.error('Error parsing ingredients:', err);
+          ingredients = [];
+        }
+
+        try {
+          instructions = typeof recipeData.instructions === 'string'
+            ? JSON.parse(recipeData.instructions)
+            : recipeData.instructions || [];
+        } catch (err) {
+          console.error('Error parsing instructions:', err);
+          instructions = [];
+        }
+
+        const recipeObj = {
           id: recipeData.id,
-          title: recipeData.title,
-          description: recipeData.description,
-          cookTime: recipeData.cook_time.toString(),
-          servings: recipeData.servings.toString(),
-          difficulty: recipeData.difficulty,
-          ingredients: JSON.parse(recipeData.ingredients),
-          instructions: JSON.parse(recipeData.instructions),
-          tags: recipeData.tags,
+          title: recipeData.title || 'Untitled Recipe',
+          description: recipeData.description || 'No description available',
+          cookTime: (recipeData.cook_time || 30).toString(),
+          servings: (recipeData.servings || 4).toString(),
+          difficulty: recipeData.difficulty || 'Medium',
+          ingredients: ingredients,
+          instructions: instructions,
+          tags: recipeData.tags || [],
           userId: recipeData.user_id,
           createdAt: recipeData.created_at,
           imageUrl: imageUrl || 'https://via.placeholder.com/800x400?text=No+Image',
-        });
+          nutrition: {
+            calories: recipeData.nutrition_calories || 0,
+            protein: recipeData.nutrition_protein || 0,
+            carbs: recipeData.nutrition_carbs || 0,
+            fat: recipeData.nutrition_fat || 0,
+            fiber: recipeData.nutrition_fiber || 0,
+            sugar: recipeData.nutrition_sugar || 0,
+            sodium: recipeData.nutrition_sodium || 0
+          }
+        };
+
+        setRecipe(recipeObj);
+        setScaledServings(parseInt(recipeData.servings) || 4);
+        setScaledIngredients(ingredients);
+
+        // Fetch ratings and reviews (don't let this fail the whole recipe load)
+        try {
+          await fetchRatingsAndReviews();
+        } catch (err) {
+          console.error('Error fetching ratings/reviews:', err);
+          // Continue loading the recipe even if ratings fail
+        }
 
         // Check if recipe is saved by current user
         if (currentUser) {
@@ -93,6 +164,43 @@ const RecipeDetails = () => {
       fetchRecipe();
     }
   }, [id, currentUser]);
+
+  const fetchRatingsAndReviews = async () => {
+    try {
+      // Fetch average rating
+      const { data: ratingsData, error: ratingsError } = await supabase
+        .from('ratings')
+        .select('rating')
+        .eq('recipe_id', id);
+
+      if (ratingsError) throw ratingsError;
+
+      if (ratingsData && ratingsData.length > 0) {
+        const totalRating = ratingsData.reduce((sum, r) => sum + r.rating, 0);
+        setAverageRating(totalRating / ratingsData.length);
+      }
+
+      // Fetch review count
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from('reviews')
+        .select('id')
+        .eq('recipe_id', id);
+
+      if (reviewsError) throw reviewsError;
+      setTotalReviews(reviewsData?.length || 0);
+    } catch (error) {
+      console.error('Error fetching ratings and reviews:', error);
+    }
+  };
+
+  const handleScaledIngredientsChange = (newIngredients, newServings) => {
+    setScaledIngredients(newIngredients);
+    setScaledServings(newServings);
+  };
+
+  const handleRatingUpdate = () => {
+    fetchRatingsAndReviews();
+  };
 
   const handleSaveRecipe = () => {
     if (!currentUser) {
@@ -117,8 +225,17 @@ const RecipeDetails = () => {
   };
 
   const handleDeleteRecipe = async () => {
-    if (!currentUser || (recipe && recipe.userId !== currentUser.uid)) {
-      return; // Only allow deletion by the recipe creator
+    if (!currentUser || !recipe) {
+      return;
+    }
+
+    // Check if current user is the recipe creator using UUID mapping
+    const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+    const userUuid = userMappings[currentUser.uid];
+
+    if (!userUuid || recipe.userId !== userUuid) {
+      alert('You can only delete your own recipes.');
+      return;
     }
 
     if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
@@ -162,9 +279,46 @@ const RecipeDetails = () => {
     return (
       <div className="text-center py-12">
         <h2 className="text-2xl font-bold mb-4">{error}</h2>
-        <Button variant="outline" onClick={() => navigate(-1)}>
-          Go Back
-        </Button>
+        <p className="text-muted-foreground mb-6">
+          {error.includes('not found')
+            ? 'This recipe may have been deleted or the link is incorrect.'
+            : 'There was a problem loading this recipe. Please try again.'}
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
+          <Button onClick={() => window.location.reload()}>
+            Try Again
+          </Button>
+        </div>
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-6 p-4 bg-muted rounded-lg text-left max-w-md mx-auto">
+            <p className="text-sm font-medium mb-2">Debug Info:</p>
+            <p className="text-xs text-muted-foreground">Recipe ID: {id}</p>
+            <p className="text-xs text-muted-foreground">Error: {error}</p>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Safety check - ensure recipe is loaded before rendering
+  if (!recipe) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-4">Recipe not loaded</h2>
+        <p className="text-muted-foreground mb-6">
+          The recipe data is not available. Please try refreshing the page.
+        </p>
+        <div className="flex gap-4 justify-center">
+          <Button variant="outline" onClick={() => navigate(-1)}>
+            Go Back
+          </Button>
+          <Button onClick={() => window.location.reload()}>
+            Refresh Page
+          </Button>
+        </div>
       </div>
     );
   }
@@ -198,7 +352,11 @@ const RecipeDetails = () => {
             )}
           </Button>
 
-          {currentUser && recipe && recipe.userId === currentUser.uid && (
+          {currentUser && recipe && (() => {
+            const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+            const userUuid = userMappings[currentUser.uid];
+            return userUuid && recipe.userId === userUuid;
+          })() && (
             <>
               <Button
                 variant="outline"
@@ -259,23 +417,19 @@ const RecipeDetails = () => {
 
         <p className="text-muted-foreground mb-8">{recipe.description}</p>
 
-        {/* Recipe content */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {/* Ingredients */}
-          <div className="md:col-span-1">
-            <h2 className="text-xl font-semibold mb-4">Ingredients</h2>
-            <ul className="space-y-2">
-              {recipe.ingredients && recipe.ingredients.map((ingredient, index) => (
-                <li key={index} className="flex items-start gap-2">
-                  <span className="inline-block h-2 w-2 rounded-full bg-primary mt-2"></span>
-                  <span>{ingredient}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+        {/* Recipe Scaling */}
+        <div className="mb-8">
+          <RecipeScaling
+            originalServings={parseInt(recipe.servings)}
+            ingredients={recipe.ingredients}
+            onScaledIngredientsChange={handleScaledIngredientsChange}
+          />
+        </div>
 
+        {/* Recipe content */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
           {/* Instructions */}
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <h2 className="text-xl font-semibold mb-4">Instructions</h2>
             <ol className="space-y-4">
               {recipe.instructions && recipe.instructions.map((instruction, index) => (
@@ -288,6 +442,30 @@ const RecipeDetails = () => {
               ))}
             </ol>
           </div>
+        </div>
+
+        {/* Nutrition Information */}
+        <div className="mb-8">
+          <Nutrition
+            nutrition={recipe.nutrition}
+            servings={scaledServings}
+            originalServings={parseInt(recipe.servings)}
+          />
+        </div>
+
+        {/* Reviews and Ratings */}
+        <div className="mb-8">
+          <Reviews
+            recipeId={id}
+            averageRating={averageRating}
+            totalReviews={totalReviews}
+            onRatingUpdate={handleRatingUpdate}
+          />
+        </div>
+
+        {/* Collections */}
+        <div className="mb-8">
+          <Collections recipeId={id} />
         </div>
 
         {/* Recipe metadata */}

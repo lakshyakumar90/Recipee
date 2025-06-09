@@ -1,16 +1,20 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Search, Clock, ChefHat, Plus } from 'lucide-react';
+import { Clock, ChefHat, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
+import SearchFilters from '@/components/SearchFilters';
 
 const Home = () => {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState({});
   const [filteredRecipes, setFilteredRecipes] = useState([]);
+  const [sortBy, setSortBy] = useState('created_at');
+  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     const fetchRecipes = async () => {
@@ -74,21 +78,119 @@ const Home = () => {
     fetchRecipes();
   }, []);
 
-  // Filter recipes based on search query
+  // Filter and sort recipes based on search query, filters, and sorting
   useEffect(() => {
-    if (searchQuery.trim() === '') {
-      setFilteredRecipes(recipes);
-    } else {
-      const filtered = recipes.filter(recipe =>
+    let filtered = [...recipes];
+
+    // Apply search query filter
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter(recipe =>
         recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (recipe.tags && recipe.tags.some(tag =>
           tag.toLowerCase().includes(searchQuery.toLowerCase())
+        )) ||
+        (recipe.ingredients && JSON.parse(recipe.ingredients).some(ingredient =>
+          ingredient.toLowerCase().includes(searchQuery.toLowerCase())
         ))
       );
-      setFilteredRecipes(filtered);
     }
-  }, [searchQuery, recipes]);
+
+    // Apply difficulty filter
+    if (filters.difficulty) {
+      filtered = filtered.filter(recipe => recipe.difficulty === filters.difficulty);
+    }
+
+    // Apply cook time filters
+    if (filters.maxCookTime) {
+      filtered = filtered.filter(recipe => {
+        const cookTime = parseInt(recipe.cookTime) || 30;
+        return cookTime <= filters.maxCookTime;
+      });
+    }
+
+    if (filters.minCookTime) {
+      filtered = filtered.filter(recipe => {
+        const cookTime = parseInt(recipe.cookTime) || 30;
+        return cookTime >= filters.minCookTime;
+      });
+    }
+
+    // Apply servings filters
+    if (filters.minServings) {
+      filtered = filtered.filter(recipe => {
+        const servings = parseInt(recipe.servings) || 4;
+        return servings >= filters.minServings;
+      });
+    }
+
+    if (filters.maxServings) {
+      filtered = filtered.filter(recipe => {
+        const servings = parseInt(recipe.servings) || 4;
+        return servings <= filters.maxServings;
+      });
+    }
+
+    // Apply cuisine filter
+    if (filters.cuisine) {
+      filtered = filtered.filter(recipe =>
+        recipe.tags && recipe.tags.some(tag =>
+          tag.toLowerCase().includes(filters.cuisine.toLowerCase())
+        )
+      );
+    }
+
+    // Apply dietary filter
+    if (filters.dietary) {
+      filtered = filtered.filter(recipe =>
+        recipe.tags && recipe.tags.some(tag =>
+          tag.toLowerCase().includes(filters.dietary.toLowerCase())
+        )
+      );
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      let aValue, bValue;
+
+      switch (sortBy) {
+        case 'title':
+          aValue = a.title.toLowerCase();
+          bValue = b.title.toLowerCase();
+          break;
+        case 'cook_time':
+          aValue = parseInt(a.cookTime) || 30;
+          bValue = parseInt(b.cookTime) || 30;
+          break;
+        case 'created_at':
+        default:
+          aValue = new Date(a.createdAt);
+          bValue = new Date(b.createdAt);
+          break;
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
+      } else {
+        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
+      }
+    });
+
+    setFilteredRecipes(filtered);
+  }, [searchQuery, filters, recipes, sortBy, sortOrder]);
+
+  const handleSearch = (query) => {
+    setSearchQuery(query);
+  };
+
+  const handleFiltersChange = (newFilters) => {
+    setFilters(newFilters);
+  };
+
+  const handleSortChange = ({ sortBy: newSortBy, sortOrder: newSortOrder }) => {
+    setSortBy(newSortBy);
+    setSortOrder(newSortOrder);
+  };
 
   // Animation variants for staggered list
   const container = {
@@ -151,16 +253,12 @@ const Home = () => {
 
       {/* Search Section */}
       <section className="mb-8">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5" />
-          <input
-            type="text"
-            placeholder="Search recipes by name, description, or tags..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-          />
-        </div>
+        <SearchFilters
+          onSearch={handleSearch}
+          onFiltersChange={handleFiltersChange}
+          onSortChange={handleSortChange}
+          initialFilters={filters}
+        />
       </section>
 
       {/* Recipes Grid */}

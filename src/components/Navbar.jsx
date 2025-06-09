@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Menu, X, ChefHat, LogOut, User, Plus, BookOpen } from 'lucide-react';
+import { Menu, X, ChefHat, LogOut, User, Plus, BookOpen, FolderOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import { signOut } from 'firebase/auth';
+import ThemeToggle from './ThemeToggle';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -47,6 +48,9 @@ const Navbar = () => {
             <Link to="/" className="text-foreground hover:text-primary transition-colors">
               Home
             </Link>
+            <Link to="/collections" className="text-foreground hover:text-primary transition-colors">
+              Collections
+            </Link>
             {user && (
               <>
                 <Link to="/my-recipes" className="text-foreground hover:text-primary transition-colors">
@@ -64,6 +68,7 @@ const Navbar = () => {
 
           {/* Auth Buttons / User Menu */}
           <div className="hidden md:flex items-center space-x-4">
+            <ThemeToggle />
             {user ? (
               <div className="flex items-center space-x-4">
                 <div className="text-sm text-muted-foreground">
@@ -105,8 +110,18 @@ const Navbar = () => {
           className="md:hidden bg-card border-t"
         >
           <div className="container mx-auto px-4 py-4 space-y-4">
+            <div className="flex items-center justify-between py-2">
+              <span className="text-foreground">Theme</span>
+              <ThemeToggle />
+            </div>
             <Link to="/" className="block py-2 text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
               Home
+            </Link>
+            <Link to="/collections" className="block py-2 text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
+              <div className="flex items-center gap-2">
+                <FolderOpen className="h-4 w-4" />
+                Collections
+              </div>
             </Link>
             {user ? (
               <>
@@ -122,7 +137,7 @@ const Navbar = () => {
                     Create Recipe
                   </div>
                 </Link>
-                <button 
+                <button
                   onClick={() => {
                     handleLogout();
                     setIsOpen(false);

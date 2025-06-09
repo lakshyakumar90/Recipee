@@ -17,7 +17,10 @@ const Login = lazy(() => import('./pages/auth/Login'));
 const Register = lazy(() => import('./pages/auth/Register'));
 const RecipeDetails = lazy(() => import('./pages/RecipeDetails'));
 const CreateRecipe = lazy(() => import('./pages/CreateRecipe'));
+const EditRecipe = lazy(() => import('./pages/EditRecipe'));
 const MyRecipes = lazy(() => import('./pages/MyRecipes'));
+const Collections = lazy(() => import('./pages/Collections'));
+const RecipeDiagnostics = lazy(() => import('./pages/RecipeDiagnostics'));
 
 // Legal and Contact pages
 const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
@@ -60,6 +63,26 @@ export const router = createBrowserRouter([
         ),
       },
       {
+        path: 'edit/:id',
+        element: (
+          <AuthGuard>
+            <Suspense fallback={<LoadingFallback />}>
+              <EditRecipe />
+            </Suspense>
+          </AuthGuard>
+        ),
+      },
+      {
+        path: 'edit/:id',
+        element: (
+          <AuthGuard>
+            <Suspense fallback={<LoadingFallback />}>
+              <EditRecipe />
+            </Suspense>
+          </AuthGuard>
+        ),
+      },
+      {
         path: 'my-recipes',
         element: (
           <AuthGuard>
@@ -69,6 +92,31 @@ export const router = createBrowserRouter([
           </AuthGuard>
         ),
       },
+      {
+        path: 'collections',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Collections />
+          </Suspense>
+        ),
+      },
+      {
+        path: 'collections/:id',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <Collections />
+          </Suspense>
+        ),
+      },
+      // Development only route
+      ...(process.env.NODE_ENV === 'development' ? [{
+        path: 'diagnostics',
+        element: (
+          <Suspense fallback={<LoadingFallback />}>
+            <RecipeDiagnostics />
+          </Suspense>
+        ),
+      }] : []),
       {
         path: 'privacy-policy',
         element: (

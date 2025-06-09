@@ -1,14 +1,16 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Minus, Upload, Loader2, AlertCircle } from 'lucide-react';
+import { Plus, Minus, Upload, Loader2, AlertCircle, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import { v4 as uuidv4 } from 'uuid';
 
-const CreateRecipe = () => {
+const EditRecipe = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [cookTime, setCookTime] = useState('');
@@ -19,6 +21,7 @@ const CreateRecipe = () => {
   const [tags, setTags] = useState(['']);
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
+  const [currentImagePath, setCurrentImagePath] = useState(null);
   const [nutrition, setNutrition] = useState({
     calories: '',
     protein: '',
@@ -30,6 +33,87 @@ const CreateRecipe = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    const fetchRecipe = async () => {
+      try {
+        const user = auth.currentUser;
+        if (!user) {
+          navigate('/auth/login');
+          return;
+        }
+
+        // Fetch recipe from Supabase
+        const { data: recipeData, error } = await supabase
+          .from('recipes')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (error) {
+          setError('Recipe not found');
+          return;
+        }
+
+        // Check if current user is the recipe creator
+        const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+        const userUuid = userMappings[user.uid];
+        
+        if (!userUuid || recipeData.user_id !== userUuid) {
+          setError('You can only edit your own recipes.');
+          return;
+        }
+
+        // Populate form with existing data
+        setTitle(recipeData.title);
+        setDescription(recipeData.description);
+        setCookTime(recipeData.cook_time.toString());
+        setServings(recipeData.servings.toString());
+        setDifficulty(recipeData.difficulty);
+        setIngredients(JSON.parse(recipeData.ingredients));
+        setInstructions(JSON.parse(recipeData.instructions));
+        setTags(recipeData.tags || ['']);
+        setCurrentImagePath(recipeData.image_path);
+        
+        // Set nutrition data
+        setNutrition({
+          calories: recipeData.nutrition_calories?.toString() || '',
+          protein: recipeData.nutrition_protein?.toString() || '',
+          carbs: recipeData.nutrition_carbs?.toString() || '',
+          fat: recipeData.nutrition_fat?.toString() || '',
+          fiber: recipeData.nutrition_fiber?.toString() || '',
+          sugar: recipeData.nutrition_sugar?.toString() || '',
+          sodium: recipeData.nutrition_sodium?.toString() || ''
+        });
+
+        // Set current image preview if exists
+        if (recipeData.image_path) {
+          try {
+            const { data } = await supabase
+              .storage
+              .from('recipe-images')
+              .getPublicUrl(recipeData.image_path);
+
+            if (data) {
+              setImagePreview(data.publicUrl);
+            }
+          } catch (err) {
+            console.error('Error getting image URL:', err);
+          }
+        }
+
+      } catch (err) {
+        console.error('Error fetching recipe:', err);
+        setError('Failed to load recipe');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) {
+      fetchRecipe();
+    }
+  }, [id, navigate]);
 
   // Handle ingredient changes
   const handleIngredientChange = (index, value) => {
@@ -143,19 +227,32 @@ const CreateRecipe = () => {
       // Get current user
       const user = auth.currentUser;
       if (!user) {
-        throw new Error('You must be logged in to create a recipe');
+        throw new Error('You must be logged in to edit a recipe');
       }
 
-      // Upload image to Supabase storage if provided
-      let imagePath = null;
+      // Handle image upload if new image is selected
+      let imagePath = currentImagePath; // Keep current image by default
       if (image) {
+        // Delete old image if it exists
+        if (currentImagePath) {
+          try {
+            await supabase
+              .storage
+              .from('recipe-images')
+              .remove([currentImagePath]);
+          } catch (err) {
+            console.warn('Failed to delete old image:', err);
+          }
+        }
+
+        // Upload new image
         const fileExt = image.name.split('.').pop();
         const fileName = `${uuidv4()}.${fileExt}`;
         const filePath = `${user.uid}/${fileName}`;
 
         const { error: uploadError } = await supabase
           .storage
-          .from('recipe-images')  // Corrected bucket name
+          .from('recipe-images')
           .upload(filePath, image);
 
         if (uploadError) {
@@ -165,29 +262,19 @@ const CreateRecipe = () => {
         imagePath = filePath;
       }
 
-      // Generate a random UUID for this user
-      const userUuid = uuidv4();
-      // Store mapping in localStorage for future reference
-      const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
-      if (!userMappings[user.uid]) {
-        userMappings[user.uid] = userUuid;
-        localStorage.setItem('userMappings', JSON.stringify(userMappings));
-      }
-
-      // Create recipe in Supabase
+      // Update recipe in Supabase
       const timestamp = new Date().toISOString();
       const recipeData = {
         title,
         description,
-        cook_time: parseInt(cookTime) || 30, // Convert to integer
-        servings: parseInt(servings) || 4,   // Convert to integer
+        cook_time: parseInt(cookTime) || 30,
+        servings: parseInt(servings) || 4,
         difficulty: difficulty || 'Medium',
-        ingredients: JSON.stringify(filteredIngredients), // Convert array to JSON
-        instructions: JSON.stringify(filteredInstructions), // Convert array to JSON
+        ingredients: JSON.stringify(filteredIngredients),
+        instructions: JSON.stringify(filteredInstructions),
         tags: filteredTags,
         image_path: imagePath,
-        user_id: userMappings[user.uid], // Use the UUID instead of Firebase UID
-        created_at: timestamp,
+        updated_at: timestamp,
         // Nutrition information
         nutrition_calories: nutrition.calories ? parseInt(nutrition.calories) : null,
         nutrition_protein: nutrition.protein ? parseFloat(nutrition.protein) : null,
@@ -198,36 +285,42 @@ const CreateRecipe = () => {
         nutrition_sodium: nutrition.sodium ? parseFloat(nutrition.sodium) : null
       };
 
-      console.log('About to insert recipe with data:', JSON.stringify(recipeData, null, 2));
-      console.log('Using Supabase URL:', import.meta.env.VITE_SUPABASE_URL);
-      console.log('Using Supabase Key (first 10 chars):', import.meta.env.VITE_SUPABASE_SERVICE_KEY.substring(0, 10) + '...');
+      const { error } = await supabase
+        .from('recipes')
+        .update(recipeData)
+        .eq('id', id);
 
-      try {
-        const { data, error } = await supabase
-          .from('recipes')
-          .insert(recipeData)
-          .select();
-
-        console.log('Insert response:', { data, error });
-
-        if (error) {
-          console.error('Supabase error details:', error);
-          throw new Error('Failed to create recipe: ' + error.message);
-        }
-
-        // Navigate to the newly created recipe
-        navigate(`/recipes/${data[0].id}`);
-      } catch (err) {
-        console.error('Error creating recipe (full error):', err);
-        setError(err.message || 'Failed to create recipe');
-        setIsSubmitting(false);
+      if (error) {
+        throw new Error('Failed to update recipe: ' + error.message);
       }
+
+      // Navigate back to the recipe
+      navigate(`/recipes/${id}`);
     } catch (err) {
-      console.error('Error creating recipe:', err);
-      setError(err.message || 'Failed to create recipe');
+      console.error('Error updating recipe:', err);
+      setError(err.message || 'Failed to update recipe');
       setIsSubmitting(false);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex justify-center items-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="text-center py-12">
+        <h2 className="text-2xl font-bold mb-4">{error}</h2>
+        <Button variant="outline" onClick={() => navigate(-1)}>
+          Go Back
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -236,7 +329,14 @@ const CreateRecipe = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
       >
-        <h1 className="text-3xl font-bold mb-6">Create New Recipe</h1>
+        {/* Header */}
+        <div className="flex items-center gap-4 mb-6">
+          <Button variant="ghost" onClick={() => navigate(-1)} className="flex items-center gap-2">
+            <ArrowLeft className="h-4 w-4" />
+            Back
+          </Button>
+          <h1 className="text-3xl font-bold">Edit Recipe</h1>
+        </div>
 
         {error && (
           <div className="bg-destructive/10 text-destructive p-4 rounded-md mb-6 flex items-start gap-2">
@@ -283,15 +383,16 @@ const CreateRecipe = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label htmlFor="cookTime" className="block text-sm font-medium mb-1">
-                  Cook Time
+                  Cook Time (minutes)
                 </label>
                 <input
                   id="cookTime"
-                  type="text"
+                  type="number"
+                  min="1"
                   value={cookTime}
                   onChange={(e) => setCookTime(e.target.value)}
                   className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 30 mins"
+                  placeholder="e.g. 30"
                 />
               </div>
 
@@ -301,7 +402,8 @@ const CreateRecipe = () => {
                 </label>
                 <input
                   id="servings"
-                  type="text"
+                  type="number"
+                  min="1"
                   value={servings}
                   onChange={(e) => setServings(e.target.value)}
                   className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
@@ -339,16 +441,26 @@ const CreateRecipe = () => {
                     alt="Recipe preview"
                     className="max-h-64 mx-auto rounded-md"
                   />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => {
-                      setImage(null);
-                      setImagePreview(null);
-                    }}
-                  >
-                    Remove Image
-                  </Button>
+                  <div className="flex gap-2 justify-center">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => document.getElementById('image').click()}
+                    >
+                      Change Image
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setImage(null);
+                        setImagePreview(null);
+                        setCurrentImagePath(null);
+                      }}
+                    >
+                      Remove Image
+                    </Button>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-2">
@@ -356,13 +468,6 @@ const CreateRecipe = () => {
                   <p className="text-muted-foreground">
                     Drag and drop an image, or click to browse
                   </p>
-                  <input
-                    type="file"
-                    id="image"
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="hidden"
-                  />
                   <Button
                     type="button"
                     variant="outline"
@@ -372,6 +477,13 @@ const CreateRecipe = () => {
                   </Button>
                 </div>
               )}
+              <input
+                type="file"
+                id="image"
+                accept="image/*"
+                onChange={handleImageChange}
+                className="hidden"
+              />
             </div>
           </div>
 
@@ -620,7 +732,7 @@ const CreateRecipe = () => {
             <Button
               type="button"
               variant="outline"
-              onClick={() => navigate(-1)}
+              onClick={() => navigate(`/recipes/${id}`)}
             >
               Cancel
             </Button>
@@ -631,10 +743,10 @@ const CreateRecipe = () => {
               {isSubmitting ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Creating...
+                  Updating...
                 </span>
               ) : (
-                'Create Recipe'
+                'Update Recipe'
               )}
             </Button>
           </div>
@@ -644,9 +756,4 @@ const CreateRecipe = () => {
   );
 };
 
-export default CreateRecipe;
-
-
-
-
-
+export default EditRecipe;
