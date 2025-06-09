@@ -47,14 +47,19 @@ const Reviews = ({ recipeId, averageRating, totalReviews, onRatingUpdate }) => {
       const enhancedReviews = (data || []).map(review => {
         if (!review.user_name) {
           // Try to get user name from localStorage userMappings
-          const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
-          const firebaseUid = Object.keys(userMappings).find(uid => userMappings[uid] === review.user_id);
+          try {
+            const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+            const firebaseUid = Object.keys(userMappings).find(uid => userMappings[uid] === review.user_id);
 
-          if (firebaseUid && currentUser && currentUser.uid === firebaseUid) {
-            // This is the current user's review
-            review.user_name = currentUser.displayName || currentUser.email?.split('@')[0] || 'You';
-          } else {
-            // For other users, use a generic name
+            if (firebaseUid && currentUser && currentUser.uid === firebaseUid) {
+              // This is the current user's review
+              review.user_name = currentUser.displayName || currentUser.email?.split('@')[0] || 'You';
+            } else {
+              // For other users, use a generic name
+              review.user_name = 'User';
+            }
+          } catch (err) {
+            // If localStorage parsing fails, use fallback
             review.user_name = 'User';
           }
         }

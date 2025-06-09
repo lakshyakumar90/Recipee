@@ -149,8 +149,13 @@ const RecipeDetails = () => {
 
         // Check if recipe is saved by current user
         if (currentUser) {
-          const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
-          setIsSaved(savedRecipes.includes(id));
+          try {
+            const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+            setIsSaved(savedRecipes.includes(id));
+          } catch (err) {
+            console.error('Error parsing saved recipes from localStorage:', err);
+            setIsSaved(false);
+          }
         }
       } catch (err) {
         console.error('Error fetching recipe:', err);
@@ -209,7 +214,13 @@ const RecipeDetails = () => {
     }
 
     // Toggle saved state
-    const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    let savedRecipes = [];
+    try {
+      savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+    } catch (err) {
+      console.error('Error parsing saved recipes from localStorage:', err);
+      savedRecipes = [];
+    }
 
     if (isSaved) {
       // Remove from saved recipes
@@ -230,7 +241,13 @@ const RecipeDetails = () => {
     }
 
     // Check if current user is the recipe creator using UUID mapping
-    const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+    let userMappings = {};
+    try {
+      userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+    } catch (err) {
+      console.error('Error parsing userMappings from localStorage:', err);
+      userMappings = {};
+    }
     const userUuid = userMappings[currentUser.uid];
 
     if (!userUuid || recipe.userId !== userUuid) {
@@ -353,9 +370,14 @@ const RecipeDetails = () => {
           </Button>
 
           {currentUser && recipe && (() => {
-            const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
-            const userUuid = userMappings[currentUser.uid];
-            return userUuid && recipe.userId === userUuid;
+            try {
+              const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+              const userUuid = userMappings[currentUser.uid];
+              return userUuid && recipe.userId === userUuid;
+            } catch (err) {
+              console.error('Error parsing userMappings from localStorage:', err);
+              return false;
+            }
           })() && (
             <>
               <Button

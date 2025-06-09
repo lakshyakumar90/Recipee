@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FolderPlus, 
-  Folder, 
-  FolderOpen, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Eye, 
+import {
+  FolderPlus,
+  Folder,
+  FolderOpen,
+  Plus,
+  Edit,
+  Trash2,
+  Eye,
   EyeOff,
   BookmarkPlus,
   BookmarkCheck,
@@ -47,9 +47,15 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
     if (!currentUser) return;
 
     try {
-      const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+      let userMappings = {};
+      try {
+        userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+      } catch (err) {
+        console.error('Error parsing userMappings from localStorage:', err);
+        userMappings = {};
+      }
       const userUuid = userMappings[currentUser.uid];
-      
+
       if (!userUuid) return;
 
       const { data, error } = await supabase
@@ -92,7 +98,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
         .eq('recipe_id', recipeId);
 
       if (error) throw error;
-      
+
       const collectionsData = data?.map(item => item.collections).filter(Boolean) || [];
       setCollections(collectionsData);
     } catch (error) {
@@ -108,7 +114,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
     try {
       const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
       const userUuid = userMappings[currentUser.uid];
-      
+
       if (!userUuid) return;
 
       const collectionData = {
@@ -141,7 +147,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
       setShowCreateForm(false);
       setCollectionForm({ name: '', description: '', isPublic: false });
       fetchUserCollections();
-      
+
       if (onCollectionUpdate) {
         onCollectionUpdate();
       }
@@ -164,7 +170,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
         .eq('id', collectionId);
 
       if (error) throw error;
-      
+
       fetchUserCollections();
       if (recipeId) {
         fetchRecipeCollections();
@@ -286,7 +292,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
             <h4 className="font-semibold mb-4">
               {editingCollection ? 'Edit Collection' : 'Create New Collection'}
             </h4>
-            
+
             <form onSubmit={handleCreateCollection} className="space-y-4">
               <div>
                 <label className="block text-sm font-medium mb-2">
@@ -353,7 +359,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
                     </>
                   )}
                 </Button>
-                
+
                 <Button
                   type="button"
                   variant="outline"
@@ -391,7 +397,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
                 <X className="h-4 w-4" />
               </Button>
             </div>
-            
+
             {userCollections.length === 0 ? (
               <div className="text-center py-4 text-muted-foreground">
                 <Folder className="h-8 w-8 mx-auto mb-2 opacity-50" />
@@ -424,7 +430,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
                           </div>
                         </div>
                       </div>
-                      
+
                       <Button
                         variant={isInCollection ? "default" : "outline"}
                         size="sm"
@@ -473,7 +479,7 @@ const Collections = ({ recipeId, onCollectionUpdate }) => {
                     )}
                     <h5 className="font-medium">{collection.name}</h5>
                   </div>
-                  
+
                   <div className="flex gap-1">
                     <Button
                       variant="ghost"

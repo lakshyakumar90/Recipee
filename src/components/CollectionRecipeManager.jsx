@@ -13,6 +13,7 @@ import {
   Trash2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import DietaryBadge from '@/components/DietaryBadge';
 import supabase from '@/config/supabase';
 import { auth } from '@/config/firebase';
 
@@ -73,7 +74,13 @@ const CollectionRecipeManager = ({ collection, onUpdate }) => {
 
     try {
       // Get user UUID
-      const userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+      let userMappings = {};
+      try {
+        userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
+      } catch (err) {
+        console.error('Error parsing userMappings from localStorage:', err);
+        userMappings = {};
+      }
       const userUuid = userMappings[currentUser.uid];
 
       if (!userUuid) return;
@@ -253,7 +260,10 @@ const CollectionRecipeManager = ({ collection, onUpdate }) => {
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <h4 className="font-medium mb-2 line-clamp-2">{recipe.title}</h4>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-medium line-clamp-2 flex-1">{recipe.title}</h4>
+                      <DietaryBadge tags={recipe.tags} size="xs" />
+                    </div>
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                       {recipe.description}
                     </p>
@@ -332,21 +342,25 @@ const CollectionRecipeManager = ({ collection, onUpdate }) => {
                     />
                   </div>
                   <div className="p-4">
-                    <h4 className="font-semibold mb-2 line-clamp-2">{recipe.title}</h4>
+                    <div className="flex items-start justify-between mb-2">
+                      <h4 className="font-semibold line-clamp-2 flex-1">{recipe.title}</h4>
+                      <DietaryBadge tags={recipe.tags} size="xs" />
+                    </div>
                     <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                       {recipe.description}
                     </p>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Clock className="h-4 w-4" />
-                        {recipe.cook_time} min
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Users className="h-4 w-4" />
-                        {recipe.servings}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <ChefHat className="h-4 w-4" />
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {recipe.cook_time} min
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {recipe.servings}
+                        </span>
+                      </div>
+                      <span className="text-xs bg-muted px-2 py-1 rounded-full">
                         {recipe.difficulty}
                       </span>
                     </div>

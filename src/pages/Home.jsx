@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, ChefHat, Plus } from 'lucide-react';
+import { Clock, ChefHat, Plus, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import SearchFilters from '@/components/SearchFilters';
+import DietaryBadge from '@/components/DietaryBadge';
 
 const Home = () => {
   const [recipes, setRecipes] = useState([]);
@@ -84,16 +85,45 @@ const Home = () => {
 
     // Apply search query filter
     if (searchQuery.trim() !== '') {
-      filtered = filtered.filter(recipe =>
-        recipe.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        recipe.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (recipe.tags && recipe.tags.some(tag =>
-          tag.toLowerCase().includes(searchQuery.toLowerCase())
-        )) ||
-        (recipe.ingredients && JSON.parse(recipe.ingredients).some(ingredient =>
-          ingredient.toLowerCase().includes(searchQuery.toLowerCase())
-        ))
-      );
+      filtered = filtered.filter(recipe => {
+        const query = searchQuery.toLowerCase();
+
+        // Search in title and description
+        if (recipe.title.toLowerCase().includes(query) ||
+            recipe.description.toLowerCase().includes(query)) {
+          return true;
+        }
+
+        // Search in tags
+        if (recipe.tags && recipe.tags.some(tag =>
+          tag.toLowerCase().includes(query)
+        )) {
+          return true;
+        }
+
+        // Search in ingredients (with safe JSON parsing)
+        if (recipe.ingredients) {
+          try {
+            let ingredients = recipe.ingredients;
+            if (typeof ingredients === 'string') {
+              ingredients = JSON.parse(ingredients);
+            }
+            if (Array.isArray(ingredients) && ingredients.some(ingredient =>
+              ingredient.toLowerCase().includes(query)
+            )) {
+              return true;
+            }
+          } catch (err) {
+            // If JSON parsing fails, try searching the raw string
+            if (typeof recipe.ingredients === 'string' &&
+                recipe.ingredients.toLowerCase().includes(query)) {
+              return true;
+            }
+          }
+        }
+
+        return false;
+      });
     }
 
     // Apply difficulty filter
@@ -288,15 +318,29 @@ const Home = () => {
                       />
                     </div>
                     <div className="p-4">
-                      <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                        {recipe.title}
-                      </h3>
+                      <div className="flex items-start justify-between mb-2">
+                        <h3 className="font-semibold text-lg group-hover:text-primary transition-colors flex-1">
+                          {recipe.title}
+                        </h3>
+                        <DietaryBadge tags={recipe.tags} size="xs" />
+                      </div>
                       <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                         {recipe.description}
                       </p>
-                      <div className="flex items-center text-sm text-muted-foreground">
-                        <Clock className="h-4 w-4 mr-1" />
-                        <span>{recipe.cookTime || '30 mins'}</span>
+                      <div className="flex items-center justify-between text-sm text-muted-foreground">
+                        <div className="flex items-center gap-3">
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-4 w-4" />
+                            {recipe.cookTime || '30'} min
+                          </span>
+                          <span className="flex items-center gap-1">
+                            <Users className="h-4 w-4" />
+                            {recipe.servings || '4'}
+                          </span>
+                        </div>
+                        <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                          {recipe.difficulty || 'Medium'}
+                        </span>
                       </div>
                     </div>
                   </div>

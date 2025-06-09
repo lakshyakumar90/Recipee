@@ -19,10 +19,10 @@ const Footer = () => {
               Our platform makes it easy to find inspiration for your next meal.
             </p>
             <div className="flex space-x-4">
-              <a href="https://github.com/VAIBHAVKUMARSHARMA/" target='_blank' className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://github.com/lakshyakumar90/" target='_blank' className="text-muted-foreground hover:text-primary transition-colors">
                 <Github className="h-5 w-5" />
               </a>
-              <a href="https://www.linkedin.com/in/vaibhav-kumar-sharma-47b5a5276/" target='_blank' className="text-muted-foreground hover:text-primary transition-colors">
+              <a href="https://www.linkedin.com/in/kumar-lakshya" target='_blank' className="text-muted-foreground hover:text-primary transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
             </div>

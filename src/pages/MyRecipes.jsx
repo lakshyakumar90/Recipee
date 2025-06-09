@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, Plus, BookmarkCheck, ChefHat, Search, Edit, Trash2, MoreVertical } from 'lucide-react';
+import { Clock, Plus, BookmarkCheck, ChefHat, Search, Edit, Trash2, MoreVertical, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import { v4 as uuidv4 } from 'uuid';
+import DietaryBadge from '@/components/DietaryBadge';
 
 const MyRecipes = () => {
   const navigate = useNavigate();
@@ -111,7 +112,13 @@ const MyRecipes = () => {
         setRecipes(recipesList);
 
         // Fetch saved recipes from localStorage
-        const savedRecipeIds = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        let savedRecipeIds = [];
+        try {
+          savedRecipeIds = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
+        } catch (err) {
+          console.error('Error parsing saved recipes from localStorage:', err);
+          savedRecipeIds = [];
+        }
 
         if (savedRecipeIds.length > 0) {
           // Fetch details for each saved recipe from Supabase
@@ -422,15 +429,29 @@ const MyRecipes = () => {
                     />
                   </div>
                   <div className="p-4">
-                    <h3 className="font-semibold text-lg mb-2 group-hover:text-primary transition-colors">
-                      {recipe.title}
-                    </h3>
+                    <div className="flex items-start justify-between mb-2">
+                      <h3 className="font-semibold text-lg group-hover:text-primary transition-colors flex-1">
+                        {recipe.title}
+                      </h3>
+                      <DietaryBadge tags={recipe.tags} size="xs" />
+                    </div>
                     <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                       {recipe.description}
                     </p>
-                    <div className="flex items-center text-sm text-muted-foreground">
-                      <Clock className="h-4 w-4 mr-1" />
-                      <span>{recipe.cookTime || '30 mins'}</span>
+                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                      <div className="flex items-center gap-3">
+                        <span className="flex items-center gap-1">
+                          <Clock className="h-4 w-4" />
+                          {recipe.cookTime || '30'} min
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Users className="h-4 w-4" />
+                          {recipe.servings || '4'}
+                        </span>
+                      </div>
+                      <span className="text-xs bg-muted px-2 py-1 rounded-full">
+                        {recipe.difficulty || 'Medium'}
+                      </span>
                     </div>
                   </div>
                 </Link>
