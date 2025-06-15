@@ -1,38 +1,35 @@
-// Utility functions for dietary indicators
-
 export const getDietaryType = (tags) => {
   if (!tags || !Array.isArray(tags)) return null;
-  
+
   const lowerTags = tags.map(tag => tag.toLowerCase());
-  
-  // Check for vegan first (vegan is also vegetarian)
+
   if (lowerTags.some(tag => tag.includes('vegan'))) {
     return 'vegan';
   }
-  
-  // Check for vegetarian
-  if (lowerTags.some(tag => tag.includes('vegetarian') || tag.includes('veggie'))) {
+
+  if (lowerTags.some(tag => tag.includes('vegetarian') ||
+    tag.includes('veggie') ||
+    tag.includes('dessert') ||
+    tag.includes('cookies') ||
+    tag.includes('chocolate'))) {
     return 'vegetarian';
   }
-  
-  // Check for non-vegetarian indicators
+
   const nonVegKeywords = ['chicken', 'beef', 'pork', 'fish', 'meat', 'seafood', 'lamb', 'turkey', 'bacon', 'ham', 'sausage'];
   if (lowerTags.some(tag => nonVegKeywords.some(keyword => tag.includes(keyword)))) {
     return 'non-vegetarian';
   }
-  
-  // Default to null if no clear indication
   return null;
 };
 
 export const getDietaryIcon = (dietaryType) => {
   switch (dietaryType) {
     case 'vegan':
-      return '🌱'; // Plant emoji for vegan
+      return '🌱'; 
     case 'vegetarian':
-      return '🥬'; // Leafy greens for vegetarian
+      return '🥬'; 
     case 'non-vegetarian':
-      return '🍖'; // Meat emoji for non-vegetarian
+      return '🍖'; 
     default:
       return null;
   }

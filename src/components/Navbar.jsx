@@ -48,9 +48,6 @@ const Navbar = () => {
             <Link to="/" className="text-foreground hover:text-primary transition-colors">
               Home
             </Link>
-            <Link to="/collections" className="text-foreground hover:text-primary transition-colors">
-              Collections
-            </Link>
             {user && (
               <>
                 <Link to="/my-recipes" className="text-foreground hover:text-primary transition-colors">
@@ -116,12 +113,6 @@ const Navbar = () => {
             </div>
             <Link to="/" className="block py-2 text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
               Home
-            </Link>
-            <Link to="/collections" className="block py-2 text-foreground hover:text-primary" onClick={() => setIsOpen(false)}>
-              <div className="flex items-center gap-2">
-                <FolderOpen className="h-4 w-4" />
-                Collections
-              </div>
             </Link>
             {user ? (
               <>

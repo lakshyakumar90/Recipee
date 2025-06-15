@@ -3,10 +3,6 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { auth } from '../config/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 
-/**
- * Guard component that protects routes that should only be accessible to guests
- * Redirects to home if user is already authenticated
- */
 const GuestGuard = ({ children }) => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -30,7 +26,6 @@ const GuestGuard = ({ children }) => {
   }
 
   if (isAuthenticated) {
-    // Redirect to home page or the page they were trying to access before login
     const from = location.state?.from?.pathname || '/';
     return <Navigate to={from} replace />;
   }

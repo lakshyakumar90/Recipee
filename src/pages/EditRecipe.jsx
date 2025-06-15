@@ -22,15 +22,7 @@ const EditRecipe = () => {
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [currentImagePath, setCurrentImagePath] = useState(null);
-  const [nutrition, setNutrition] = useState({
-    calories: '',
-    protein: '',
-    carbs: '',
-    fat: '',
-    fiber: '',
-    sugar: '',
-    sodium: ''
-  });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
@@ -75,18 +67,7 @@ const EditRecipe = () => {
         setTags(recipeData.tags || ['']);
         setCurrentImagePath(recipeData.image_path);
         
-        // Set nutrition data
-        setNutrition({
-          calories: recipeData.nutrition_calories?.toString() || '',
-          protein: recipeData.nutrition_protein?.toString() || '',
-          carbs: recipeData.nutrition_carbs?.toString() || '',
-          fat: recipeData.nutrition_fat?.toString() || '',
-          fiber: recipeData.nutrition_fiber?.toString() || '',
-          sugar: recipeData.nutrition_sugar?.toString() || '',
-          sodium: recipeData.nutrition_sodium?.toString() || ''
-        });
-
-        // Set current image preview if exists
+// Set current image preview if exists
         if (recipeData.image_path) {
           try {
             const { data } = await supabase
@@ -178,15 +159,7 @@ const EditRecipe = () => {
     }
   };
 
-  // Handle nutrition changes
-  const handleNutritionChange = (field, value) => {
-    setNutrition(prev => ({
-      ...prev,
-      [field]: value
-    }));
-  };
-
-  // Handle image selection
+// Handle image selection
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     if (file) {
@@ -275,14 +248,7 @@ const EditRecipe = () => {
         tags: filteredTags,
         image_path: imagePath,
         updated_at: timestamp,
-        // Nutrition information
-        nutrition_calories: nutrition.calories ? parseInt(nutrition.calories) : null,
-        nutrition_protein: nutrition.protein ? parseFloat(nutrition.protein) : null,
-        nutrition_carbs: nutrition.carbs ? parseFloat(nutrition.carbs) : null,
-        nutrition_fat: nutrition.fat ? parseFloat(nutrition.fat) : null,
-        nutrition_fiber: nutrition.fiber ? parseFloat(nutrition.fiber) : null,
-        nutrition_sugar: nutrition.sugar ? parseFloat(nutrition.sugar) : null,
-        nutrition_sodium: nutrition.sodium ? parseFloat(nutrition.sodium) : null
+
       };
 
       const { error } = await supabase
@@ -600,134 +566,7 @@ const EditRecipe = () => {
             </Button>
           </div>
 
-          {/* Nutrition Information */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-semibold">Nutrition Information (Optional)</h2>
-            <p className="text-sm text-muted-foreground">
-              Add nutrition information per serving. Leave blank if unknown.
-            </p>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="calories" className="block text-sm font-medium mb-1">
-                  Calories (kcal)
-                </label>
-                <input
-                  id="calories"
-                  type="number"
-                  min="0"
-                  value={nutrition.calories}
-                  onChange={(e) => handleNutritionChange('calories', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 350"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="protein" className="block text-sm font-medium mb-1">
-                  Protein (g)
-                </label>
-                <input
-                  id="protein"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.protein}
-                  onChange={(e) => handleNutritionChange('protein', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 25.5"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="carbs" className="block text-sm font-medium mb-1">
-                  Carbohydrates (g)
-                </label>
-                <input
-                  id="carbs"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.carbs}
-                  onChange={(e) => handleNutritionChange('carbs', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 45.2"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="fat" className="block text-sm font-medium mb-1">
-                  Total Fat (g)
-                </label>
-                <input
-                  id="fat"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.fat}
-                  onChange={(e) => handleNutritionChange('fat', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 12.8"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="fiber" className="block text-sm font-medium mb-1">
-                  Dietary Fiber (g)
-                </label>
-                <input
-                  id="fiber"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.fiber}
-                  onChange={(e) => handleNutritionChange('fiber', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 3.5"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="sugar" className="block text-sm font-medium mb-1">
-                  Sugars (g)
-                </label>
-                <input
-                  id="sugar"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.sugar}
-                  onChange={(e) => handleNutritionChange('sugar', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 8.2"
-                />
-              </div>
-
-              <div className="md:col-span-2 lg:col-span-1">
-                <label htmlFor="sodium" className="block text-sm font-medium mb-1">
-                  Sodium (mg)
-                </label>
-                <input
-                  id="sodium"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  value={nutrition.sodium}
-                  onChange={(e) => handleNutritionChange('sodium', e.target.value)}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-primary/30"
-                  placeholder="e.g. 650"
-                />
-              </div>
-            </div>
-
-            <div className="bg-muted/30 rounded-lg p-4">
-              <p className="text-sm text-muted-foreground">
-                <strong>Tip:</strong> You can find nutrition information on ingredient packaging or use nutrition databases like USDA FoodData Central. These values will be automatically scaled when users adjust serving sizes.
-              </p>
-            </div>
-          </div>
-
-          {/* Submit Button */}
+{/* Submit Button */}
           <div className="flex justify-end gap-4">
             <Button
               type="button"
