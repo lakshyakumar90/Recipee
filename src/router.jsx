@@ -1,5 +1,4 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
-import { lazy, Suspense } from 'react';
 
 // Layouts
 import RootLayout from './layouts/RootLayout';
@@ -8,31 +7,15 @@ import AuthLayout from './layouts/AuthLayout';
 // Pages
 import Home from './pages/Home';
 import ErrorPage from './pages/ErrorPage';
+import Login from './pages/auth/Login';
+import Register from './pages/auth/Register';
+import RecipeDetails from './pages/RecipeDetails';
+import CreateRecipe from './pages/CreateRecipe';
+import EditRecipe from './pages/EditRecipe';
+import MyRecipes from './pages/MyRecipes';
 
 // Auth Guards
 import { AuthGuard, GuestGuard } from './guards';
-
-// Lazy loaded pages for better performance
-const Login = lazy(() => import('./pages/auth/Login'));
-const Register = lazy(() => import('./pages/auth/Register'));
-const RecipeDetails = lazy(() => import('./pages/RecipeDetails'));
-const CreateRecipe = lazy(() => import('./pages/CreateRecipe'));
-const EditRecipe = lazy(() => import('./pages/EditRecipe'));
-const MyRecipes = lazy(() => import('./pages/MyRecipes'));
-const Collections = lazy(() => import('./pages/Collections'));
-const RecipeDiagnostics = lazy(() => import('./pages/RecipeDiagnostics'));
-
-// Legal and Contact pages
-const PrivacyPolicy = lazy(() => import('./pages/PrivacyPolicy'));
-const TermsOfService = lazy(() => import('./pages/TermsOfService'));
-const CookiePolicy = lazy(() => import('./pages/CookiePolicy'));
-
-// Loading component for lazy-loaded routes
-const LoadingFallback = () => (
-  <div className="flex items-center justify-center min-h-screen">
-    <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-  </div>
-);
 
 export const router = createBrowserRouter([
   {
@@ -46,19 +29,13 @@ export const router = createBrowserRouter([
       },
       {
         path: 'recipes/:id',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <RecipeDetails />
-          </Suspense>
-        ),
+        element: <RecipeDetails />,
       },
       {
         path: 'create',
         element: (
           <AuthGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <CreateRecipe />
-            </Suspense>
+            <CreateRecipe />
           </AuthGuard>
         ),
       },
@@ -66,19 +43,7 @@ export const router = createBrowserRouter([
         path: 'edit/:id',
         element: (
           <AuthGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <EditRecipe />
-            </Suspense>
-          </AuthGuard>
-        ),
-      },
-      {
-        path: 'edit/:id',
-        element: (
-          <AuthGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <EditRecipe />
-            </Suspense>
+            <EditRecipe />
           </AuthGuard>
         ),
       },
@@ -86,61 +51,11 @@ export const router = createBrowserRouter([
         path: 'my-recipes',
         element: (
           <AuthGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <MyRecipes />
-            </Suspense>
+            <MyRecipes />
           </AuthGuard>
         ),
       },
-      {
-        path: 'collections',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Collections />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'collections/:id',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <Collections />
-          </Suspense>
-        ),
-      },
-      // Development only route
-      ...(process.env.NODE_ENV === 'development' ? [{
-        path: 'diagnostics',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <RecipeDiagnostics />
-          </Suspense>
-        ),
-      }] : []),
-      {
-        path: 'privacy-policy',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <PrivacyPolicy />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'terms-of-service',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <TermsOfService />
-          </Suspense>
-        ),
-      },
-      {
-        path: 'cookie-policy',
-        element: (
-          <Suspense fallback={<LoadingFallback />}>
-            <CookiePolicy />
-          </Suspense>
-        ),
-      },
+
     ],
   },
   {
@@ -155,9 +70,7 @@ export const router = createBrowserRouter([
         path: 'login',
         element: (
           <GuestGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <Login />
-            </Suspense>
+            <Login />
           </GuestGuard>
         ),
       },
@@ -165,9 +78,7 @@ export const router = createBrowserRouter([
         path: 'register',
         element: (
           <GuestGuard>
-            <Suspense fallback={<LoadingFallback />}>
-              <Register />
-            </Suspense>
+            <Register />
           </GuestGuard>
         ),
       },

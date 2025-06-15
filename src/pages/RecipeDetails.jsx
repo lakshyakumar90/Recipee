@@ -6,11 +6,7 @@ import { Button } from '@/components/ui/button';
 import { auth } from '@/config/firebase';
 import supabase from '@/config/supabase';
 import { formatDate } from '@/lib/utils';
-import RecipeScaling from '@/components/RecipeScaling';
 import Reviews from '@/components/Reviews';
-import Collections from '@/components/Collections';
-import Nutrition from '@/components/Nutrition';
-import { debugRecipe } from '@/utils/recipeDebug';
 
 const RecipeDetails = () => {
   const { id } = useParams();
@@ -22,11 +18,8 @@ const RecipeDetails = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [averageRating, setAverageRating] = useState(0);
   const [totalReviews, setTotalReviews] = useState(0);
-  const [scaledServings, setScaledServings] = useState(null);
-  const [scaledIngredients, setScaledIngredients] = useState([]);
 
   useEffect(() => {
-    // Get current user
     const unsubscribe = auth.onAuthStateChanged((user) => {
       setCurrentUser(user);
     });
@@ -39,12 +32,6 @@ const RecipeDetails = () => {
       try {
         console.log('Fetching recipe with ID:', id);
 
-        // Run debug tool in development
-        if (process.env.NODE_ENV === 'development') {
-          await debugRecipe(id);
-        }
-
-        // Fetch recipe from Supabase
         const { data: recipeData, error } = await supabase
           .from('recipes')
           .select('*')
@@ -68,18 +55,17 @@ const RecipeDetails = () => {
           return;
         }
 
-        // Fetch image URL from Supabase storage
         let imageUrl = null;
         if (recipeData.image_path) {
           try {
             const { data } = await supabase
               .storage
-              .from('recipe-images')  // Corrected bucket name
+              .from('recipe-images')
               .getPublicUrl(recipeData.image_path);
 
             if (data) {
               imageUrl = data.publicUrl;
-              console.log('Recipe image URL:', imageUrl); // Debug log
+              console.log('Recipe image URL:', imageUrl);
             }
           } catch (err) {
             console.error('Error getting image URL:', err);
@@ -89,27 +75,25 @@ const RecipeDetails = () => {
         console.log('Image path:', recipeData.image_path);
         console.log('Generated image URL:', imageUrl);
 
-        // Parse ingredients and instructions safely
-        let ingredients = [];
-        let instructions = [];
+        // Helper function to safely parse JSON
+        const safeJsonParse = (jsonString, fallback = []) => {
+          if (!jsonString) return fallback;
+          try {
+            // If it's already an array, return it
+            if (Array.isArray(jsonString)) return jsonString;
+            // If it's a string that looks like JSON, parse it
+            if (typeof jsonString === 'string') {
+              return JSON.parse(jsonString);
+            }
+            return fallback;
+          } catch (err) {
+            console.error('Error parsing JSON:', err);
+            return fallback;
+          }
+        };
 
-        try {
-          ingredients = typeof recipeData.ingredients === 'string'
-            ? JSON.parse(recipeData.ingredients)
-            : recipeData.ingredients || [];
-        } catch (err) {
-          console.error('Error parsing ingredients:', err);
-          ingredients = [];
-        }
-
-        try {
-          instructions = typeof recipeData.instructions === 'string'
-            ? JSON.parse(recipeData.instructions)
-            : recipeData.instructions || [];
-        } catch (err) {
-          console.error('Error parsing instructions:', err);
-          instructions = [];
-        }
+        let ingredients = safeJsonParse(recipeData.ingredients, []);
+        let instructions = safeJsonParse(recipeData.instructions, []);
 
         const recipeObj = {
           id: recipeData.id,
@@ -124,30 +108,16 @@ const RecipeDetails = () => {
           userId: recipeData.user_id,
           createdAt: recipeData.created_at,
           imageUrl: imageUrl || 'https://via.placeholder.com/800x400?text=No+Image',
-          nutrition: {
-            calories: recipeData.nutrition_calories || 0,
-            protein: recipeData.nutrition_protein || 0,
-            carbs: recipeData.nutrition_carbs || 0,
-            fat: recipeData.nutrition_fat || 0,
-            fiber: recipeData.nutrition_fiber || 0,
-            sugar: recipeData.nutrition_sugar || 0,
-            sodium: recipeData.nutrition_sodium || 0
-          }
         };
 
         setRecipe(recipeObj);
-        setScaledServings(parseInt(recipeData.servings) || 4);
-        setScaledIngredients(ingredients);
 
-        // Fetch ratings and reviews (don't let this fail the whole recipe load)
         try {
           await fetchRatingsAndReviews();
         } catch (err) {
           console.error('Error fetching ratings/reviews:', err);
-          // Continue loading the recipe even if ratings fail
         }
 
-        // Check if recipe is saved by current user
         if (currentUser) {
           try {
             const savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
@@ -172,7 +142,6 @@ const RecipeDetails = () => {
 
   const fetchRatingsAndReviews = async () => {
     try {
-      // Fetch average rating
       const { data: ratingsData, error: ratingsError } = await supabase
         .from('ratings')
         .select('rating')
@@ -185,7 +154,6 @@ const RecipeDetails = () => {
         setAverageRating(totalRating / ratingsData.length);
       }
 
-      // Fetch review count
       const { data: reviewsData, error: reviewsError } = await supabase
         .from('reviews')
         .select('id')
@@ -198,11 +166,6 @@ const RecipeDetails = () => {
     }
   };
 
-  const handleScaledIngredientsChange = (newIngredients, newServings) => {
-    setScaledIngredients(newIngredients);
-    setScaledServings(newServings);
-  };
-
   const handleRatingUpdate = () => {
     fetchRatingsAndReviews();
   };
@@ -213,7 +176,6 @@ const RecipeDetails = () => {
       return;
     }
 
-    // Toggle saved state
     let savedRecipes = [];
     try {
       savedRecipes = JSON.parse(localStorage.getItem('savedRecipes') || '[]');
@@ -223,11 +185,9 @@ const RecipeDetails = () => {
     }
 
     if (isSaved) {
-      // Remove from saved recipes
       const updatedSavedRecipes = savedRecipes.filter(recipeId => recipeId !== id);
       localStorage.setItem('savedRecipes', JSON.stringify(updatedSavedRecipes));
     } else {
-      // Add to saved recipes
       savedRecipes.push(id);
       localStorage.setItem('savedRecipes', JSON.stringify(savedRecipes));
     }
@@ -240,7 +200,6 @@ const RecipeDetails = () => {
       return;
     }
 
-    // Check if current user is the recipe creator using UUID mapping
     let userMappings = {};
     try {
       userMappings = JSON.parse(localStorage.getItem('userMappings') || '{}');
@@ -257,7 +216,6 @@ const RecipeDetails = () => {
 
     if (window.confirm('Are you sure you want to delete this recipe? This action cannot be undone.')) {
       try {
-        // Delete recipe from Supabase
         const { error } = await supabase
           .from('recipes')
           .delete()
@@ -267,7 +225,6 @@ const RecipeDetails = () => {
           throw new Error('Failed to delete recipe: ' + error.message);
         }
 
-        // Delete image from Supabase storage if it exists
         if (recipe.imageUrl && recipe.imageUrl.includes('recipe-images')) {
           const imagePath = recipe.imageUrl.split('/').pop();
           await supabase
@@ -320,7 +277,6 @@ const RecipeDetails = () => {
     );
   }
 
-  // Safety check - ensure recipe is loaded before rendering
   if (!recipe) {
     return (
       <div className="text-center py-12">
@@ -342,7 +298,6 @@ const RecipeDetails = () => {
 
   return (
     <div>
-      {/* Back button and actions */}
       <div className="flex justify-between items-center mb-6">
         <Button variant="ghost" onClick={() => navigate(-1)} className="flex items-center gap-2">
           <ArrowLeft className="h-4 w-4" />
@@ -404,7 +359,6 @@ const RecipeDetails = () => {
         </div>
       </div>
 
-      {/* Recipe header */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -430,82 +384,63 @@ const RecipeDetails = () => {
             <Users className="h-5 w-5 mr-2" />
             <span>{recipe.servings || '4'} servings</span>
           </div>
-
           <div className="flex items-center text-muted-foreground">
             <ChefHat className="h-5 w-5 mr-2" />
             <span>{recipe.difficulty || 'Medium'}</span>
           </div>
         </div>
-
         <p className="text-muted-foreground mb-8">{recipe.description}</p>
 
-        {/* Recipe Scaling */}
-        <div className="mb-8">
-          <RecipeScaling
-            originalServings={parseInt(recipe.servings)}
-            ingredients={recipe.ingredients}
-            onScaledIngredientsChange={handleScaledIngredientsChange}
-          />
-        </div>
-
-        {/* Recipe content */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-8">
-          {/* Instructions */}
           <div className="md:col-span-3">
             <h2 className="text-xl font-semibold mb-4">Instructions</h2>
             <ol className="space-y-4">
-              {recipe.instructions && recipe.instructions.map((instruction, index) => (
-                <li key={index} className="flex gap-4">
-                  <div className="flex-shrink-0 flex items-center justify-center h-8 w-8 rounded-full bg-primary/10 text-primary font-medium">
-                    {index + 1}
-                  </div>
-                  <p>{instruction}</p>
+              {recipe.instructions.map((instruction, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span>{instruction}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+
+          <div className="md:col-span-3">
+            <h2 className="text-xl font-semibold mb-4">Ingredients</h2>
+            <ol className="space-y-4">
+              {recipe.ingredients.map((ingredient, index) => (
+                <li key={index} className="flex items-start gap-2">
+                  <span className="w-2 h-2 bg-primary rounded-full mt-2 flex-shrink-0"></span>
+                  <span>{ingredient}</span>
                 </li>
               ))}
             </ol>
           </div>
         </div>
 
-        {/* Nutrition Information */}
-        <div className="mb-8">
-          <Nutrition
-            nutrition={recipe.nutrition}
-            servings={scaledServings}
-            originalServings={parseInt(recipe.servings)}
-          />
-        </div>
+        {recipe.tags && recipe.tags.length > 0 && (
+          <div className="flex flex-wrap gap-2 mt-2 mb-6">
+            {recipe.tags.map((tag, index) => (
+              <span key={index} className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs">
+                {tag}
+              </span>
+            ))}
+          </div>
+        )}
+        {recipe.createdAt && (
+          <p className="text-sm text-muted-foreground mt-2">
+            Created on {formatDate(recipe.createdAt)}
+          </p>
+        )}
 
-        {/* Reviews and Ratings */}
-        <div className="mb-8">
-          <Reviews
-            recipeId={id}
+        {/* Reviews Section */}
+        <div className="mt-12">
+          <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+          <Reviews 
+            recipeId={id} 
+            currentUser={currentUser}
             averageRating={averageRating}
             totalReviews={totalReviews}
-            onRatingUpdate={handleRatingUpdate}
           />
-        </div>
-
-        {/* Collections */}
-        <div className="mb-8">
-          <Collections recipeId={id} />
-        </div>
-
-        {/* Recipe metadata */}
-        <div className="mt-12 pt-6 border-t">
-          <div className="text-sm text-muted-foreground">
-            {recipe.createdAt && (
-              <p>Created on {formatDate(recipe.createdAt)}</p>
-            )}
-            {recipe.tags && recipe.tags.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-2">
-                {recipe.tags.map((tag, index) => (
-                  <span key={index} className="bg-primary/10 text-primary px-2 py-1 rounded-full text-xs">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-          </div>
         </div>
       </motion.div>
     </div>
@@ -513,10 +448,3 @@ const RecipeDetails = () => {
 };
 
 export default RecipeDetails;
-
-
-
-
-
-
-

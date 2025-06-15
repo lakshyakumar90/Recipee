@@ -1,10 +1,6 @@
 import { Outlet } from 'react-router-dom';
 import { motion } from 'framer-motion';
 
-/**
- * Layout component for authentication pages
- * Provides a clean, focused layout for login and registration
- */
 const AuthLayout = () => {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted p-4">

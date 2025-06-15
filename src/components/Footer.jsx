@@ -7,9 +7,9 @@ const Footer = () => {
   return (
     <footer className="bg-card border-t py-8 mt-12">
       <div className="container mx-auto px-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
           {/* Logo and Description */}
-          <div className="col-span-1 md:col-span-2">
+          <div className="md:col-span-8">
             <Link to="/" className="flex items-center space-x-2 mb-4">
               <ChefHat className="h-6 w-6 text-primary" />
               <span className="text-lg font-bold">RecipeBook</span>
@@ -29,7 +29,7 @@ const Footer = () => {
           </div>
 
           {/* Quick Links */}
-          <div>
+          <div className="md:col-span-4">
             <h3 className="font-medium mb-4">Quick Links</h3>
             <ul className="space-y-2">
               <li>
@@ -45,28 +45,6 @@ const Footer = () => {
               <li>
                 <Link to="/create" className="text-muted-foreground hover:text-primary text-sm transition-colors">
                   Create Recipe
-                </Link>
-              </li>
-            </ul>
-          </div>
-
-          {/* Legal */}
-          <div>
-            <h3 className="font-medium mb-4">Legal</h3>
-            <ul className="space-y-2">
-              <li>
-                <Link to="/privacy-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">
-                  Privacy Policy
-                </Link>
-              </li>
-              <li>
-                <Link to="/terms-of-service" className="text-muted-foreground hover:text-primary text-sm transition-colors">
-                  Terms of Service
-                </Link>
-              </li>
-              <li>
-                <Link to="/cookie-policy" className="text-muted-foreground hover:text-primary text-sm transition-colors">
-                  Cookie Policy
                 </Link>
               </li>
             </ul>

@@ -12,15 +12,13 @@ const Home = () => {
   const [recipes, setRecipes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({ dietary: '' });
   const [filteredRecipes, setFilteredRecipes] = useState([]);
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState('desc');
 
   useEffect(() => {
     const fetchRecipes = async () => {
       try {
-        // Fetch recipes from Supabase
+        // Fetch recipes from Supabase, ordered by newest first
         const { data: recipesData, error } = await supabase
           .from('recipes')
           .select('*')
@@ -79,7 +77,7 @@ const Home = () => {
     fetchRecipes();
   }, []);
 
-  // Filter and sort recipes based on search query, filters, and sorting
+  // Filter recipes based on search query and dietary filters
   useEffect(() => {
     let filtered = [...recipes];
 
@@ -126,100 +124,60 @@ const Home = () => {
       });
     }
 
-    // Apply difficulty filter
-    if (filters.difficulty) {
-      filtered = filtered.filter(recipe => recipe.difficulty === filters.difficulty);
-    }
-
-    // Apply cook time filters
-    if (filters.maxCookTime) {
-      filtered = filtered.filter(recipe => {
-        const cookTime = parseInt(recipe.cookTime) || 30;
-        return cookTime <= filters.maxCookTime;
-      });
-    }
-
-    if (filters.minCookTime) {
-      filtered = filtered.filter(recipe => {
-        const cookTime = parseInt(recipe.cookTime) || 30;
-        return cookTime >= filters.minCookTime;
-      });
-    }
-
-    // Apply servings filters
-    if (filters.minServings) {
-      filtered = filtered.filter(recipe => {
-        const servings = parseInt(recipe.servings) || 4;
-        return servings >= filters.minServings;
-      });
-    }
-
-    if (filters.maxServings) {
-      filtered = filtered.filter(recipe => {
-        const servings = parseInt(recipe.servings) || 4;
-        return servings <= filters.maxServings;
-      });
-    }
-
-    // Apply cuisine filter
-    if (filters.cuisine) {
-      filtered = filtered.filter(recipe =>
-        recipe.tags && recipe.tags.some(tag =>
-          tag.toLowerCase().includes(filters.cuisine.toLowerCase())
-        )
-      );
-    }
-
-    // Apply dietary filter
+    // Apply dietary filter with case-insensitive comparison
     if (filters.dietary) {
-      filtered = filtered.filter(recipe =>
-        recipe.tags && recipe.tags.some(tag =>
-          tag.toLowerCase().includes(filters.dietary.toLowerCase())
-        )
-      );
+      const dietaryFilter = filters.dietary.toLowerCase();
+      filtered = filtered.filter(recipe => {
+        if (!recipe.tags) return false;
+        
+        // Convert all tags to lowercase for comparison
+        const lowerTags = recipe.tags.map(tag => tag.toLowerCase());
+        
+        // Check for vegan first (vegan is also vegetarian)
+        if (dietaryFilter === 'vegan') {
+          return lowerTags.some(tag => tag.includes('vegan'));
+        }
+        
+        // Check for vegetarian
+        if (dietaryFilter === 'vegetarian') {
+          return lowerTags.some(tag => 
+            tag.includes('vegetarian') || 
+            tag.includes('veggie') ||
+            tag.includes('dessert') ||
+            tag.includes('cookies') ||
+            tag.includes('chocolate')
+          );
+        }
+        
+        // Check for non-vegetarian
+        if (dietaryFilter === 'non-vegetarian') {
+          const nonVegKeywords = ['chicken', 'beef', 'pork', 'fish', 'meat', 'seafood', 'lamb', 'turkey', 'bacon', 'ham', 'sausage'];
+          return lowerTags.some(tag => nonVegKeywords.some(keyword => tag.includes(keyword)));
+        }
+        
+        return false;
+      });
     }
 
-    // Apply sorting
+    // Sort by newest first
     filtered.sort((a, b) => {
-      let aValue, bValue;
-
-      switch (sortBy) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'cook_time':
-          aValue = parseInt(a.cookTime) || 30;
-          bValue = parseInt(b.cookTime) || 30;
-          break;
-        case 'created_at':
-        default:
-          aValue = new Date(a.createdAt);
-          bValue = new Date(b.createdAt);
-          break;
-      }
-
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : aValue < bValue ? -1 : 0;
-      } else {
-        return aValue < bValue ? 1 : aValue > bValue ? -1 : 0;
-      }
+      const aDate = new Date(a.createdAt);
+      const bDate = new Date(b.createdAt);
+      return bDate - aDate; // Newest first
     });
 
     setFilteredRecipes(filtered);
-  }, [searchQuery, filters, recipes, sortBy, sortOrder]);
+  }, [searchQuery, filters, recipes]);
 
   const handleSearch = (query) => {
     setSearchQuery(query);
   };
 
   const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
-  };
-
-  const handleSortChange = ({ sortBy: newSortBy, sortOrder: newSortOrder }) => {
-    setSortBy(newSortBy);
-    setSortOrder(newSortOrder);
+    setFilters(prev => ({
+      ...prev,
+      dietary: newFilters.dietary || ''
+    }));
   };
 
   // Animation variants for staggered list
@@ -286,8 +244,6 @@ const Home = () => {
         <SearchFilters
           onSearch={handleSearch}
           onFiltersChange={handleFiltersChange}
-          onSortChange={handleSortChange}
-          initialFilters={filters}
         />
       </section>
 
